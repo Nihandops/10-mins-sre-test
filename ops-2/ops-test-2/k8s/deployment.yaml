@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: advanced-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: advanced
+  template:
+    metadata:
+      labels:
+        app: advanced
+    spec:
+      containers:
+      - name: advanced-app
+        image: advanced-candidate:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8081
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+      - name: sidecar
+        image: busybox
+        command: ["sh", "-c", "tail -F /var/log/app.log"]
+        ports:
+        - containerPort: 9000
