@@ -1,187 +1,217 @@
-# 🔧 SRE Assessment 1
+# SRE Level-1 Assessment
 
-Welcome to the SRE Level-1 assessment.  
-This test is designed to evaluate your skills in:
-
-- Docker
-- Kubernetes basics
-- Debugging & troubleshooting
-- Understanding logs
-- Applying fixes to a small service
-- Communication & documentation
-
-Please follow all instructions carefully and submit your work in a **public GitHub repository**.
+This repository contains the solution for the SRE Level-1 assessment. The project demonstrates fixing a broken Flask application, Dockerizing it, deploying on Kubernetes (Minikube), and making it accessible from a LAN network.
 
 ---
 
-# 🧪 Overview
-
-You are given a small, intentionally broken service.
-
-Your tasks:
-
-1. Fix the application  
-2. Fix the Dockerfile  
-3. Fix the Kubernetes deployment  
-4. Deploy locally using **kind** or **minikube**  
-5. Analyze provided logs  
-6. Write an incident report  
-7. Document your debugging steps  
-
----
-
-# 📂 Project Structure
+## Project Structure
 
 ```
 sre-l1-assessment/
 │
 ├── app/
-│   ├── main.py
-│   └── requirements.txt
+│   ├── main.py           # Flask application
+│   └── requirements.txt  # Python dependencies
 │
-├── Dockerfile
+├── Dockerfile            # Docker image build
 │
 ├── k8s/
-│   ├── deployment.yaml
-│   └── service.yaml
+│   ├── deployment.yaml   # Kubernetes Deployment
+│   └── service.yaml      # Kubernetes Service
 │
-├── logs.txt
+├── logs.txt              # Provided logs for debugging
 │
-└── TROUBLESHOOTING.md   (you will fill this)
+├── TROUBLESHOOTING.md    # Step-by-step debugging notes
+│
+└── incident-report.md    # Incident report
 ```
 
-You should NOT modify the initial structure.
+---
+
+## 1. Application Fixes
+
+* **Home endpoint (`/`)**:
+
+  * Original code used `time.sleep(random.randint(3,8))` causing high latency.
+  * Fixed by reducing or removing unnecessary delays.
+* **Health endpoint (`/healthz`)**:
+
+  * Originally returned HTTP 500.
+  * Fixed to return HTTP 200 for correct readiness/liveness probes.
 
 ---
 
-# ✅ **1. Fix the Application (10 points)**
+## 2. Dockerfile Fixes
 
-Located in: `app/main.py`
+* Original Dockerfile exposed wrong port and had minor inefficiencies.
+* Fixed Dockerfile:
 
-Issues you must identify and fix:
+```dockerfile
+FROM python:3.11-slim
 
-- The home ("/") endpoint responds very slowly  
-- The `/healthz` endpoint returns the **wrong HTTP status code**  
+WORKDIR /src
+COPY app .
+RUN pip install -r requirements.txt
 
-**Deliverables:**
-
-- Working application
-- Explanation of what was broken and what you changed (in TROUBLESHOOTING.md)
-
----
-
-# 🐳 **2. Fix the Dockerfile (10 points)**
-
-Issues include:
-
-- Dockerfile not building
-- Inefficient image  
-- Minor build problems  
-
-**Deliverables:**
-
-- A working, optimized Docker image  
-- Explanation of changes  
-
----
-
-# ☸️ **3. Fix the Kubernetes Deployment (15 points)**
-
-Located in: `k8s/deployment.yaml` and `k8s/service.yaml`
-
-The Kubernetes deployment has multiple issues:
-
-- Deployed application is not running
-- Readiness probe fails  
-- Service not routing properly  
-
-You must:
-
-- Fix all YAML issues  
-- Deploy locally (`kind` or `minikube`)  
-- Verify service is reachable
-- Give an explanation of Readiness and Liveness uses 
-
-**Deliverables:**
-
-- Working deployment  
-- Notes of problems identified and how you fixed them  
-
----
-
-# 📄 **4. Debug logs.txt (10 points)**
-
-The provided logs indicate probe failures and latency issues.
-
-In your own words, answer:
-
-- What caused the readiness probe failures?  
-- Why is the service slow?  
-- What is the probable root cause?  
-- What permanent fix would resolve it?  
-
-Write your answers in **TROUBLESHOOTING.md**.
-
----
-
-# 📝 **5. Incident Report (10 points)**
-
-Write a short incident report that includes:
-
-- **Summary**  
-- **Impact**  
-- **Root cause**  
-- **What you fixed**  
-- **Preventive actions**  
-
-Format must be clear and concise.
-
-Put this in a file named:  
-`incident-report.md`
-
----
-
-# 📘 **6. Documentation (10 points)**
-
-Update the provided `TROUBLESHOOTING.md` with:
-
-- Step-by-step process you followed  
-- Commands you ran  
-- Screenshots (optional)  
-- What you learned  
-
-This helps us understand your thinking process.
-
----
-
-# ⭐ Bonus (5 points)
-
-Do **any** one improvement (or more):
-
-- Add resource requests/limits  
-- Add a livenessProbe  
-- Add autoscaling (HPA)  
-- Add Makefile for automation  
-- Add GitHub CI for lint/build  
-- Add Prometheus metrics 
-- Deploy an Ingress Controller with proper Load Balancer Configuration 
-
-Include your reasoning.
-
----
-
-# 📤 Submission
-
-1. Push your final solution to a **public GitHub repository**.
-2. Include this in the README of your repo:
-
-```
-Name:
-Email:
-Time taken:
-Any assumptions:
+EXPOSE 8080
+CMD ["python", "main.py"]
 ```
 
-3. Share the GitHub link with us.
+* Exposes correct port (`8080`) matching the Flask app.
+* Optimized image for size and build.
 
-Good luck!
+---
+
+## 3. Kubernetes Deployment Fixes
+
+**Deployment YAML (`k8s/deployment.yaml`)**:
+
+* Fixed container image name to match the built Docker image: `sre-app:latest1`.
+* Added `readinessProbe` and `livenessProbe`:
+
+```yaml
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: 8080
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 2
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 8080
+  initialDelaySeconds: 15
+  periodSeconds: 10
+  timeoutSeconds: 2
+```
+
+* Added resource requests/limits:
+
+```yaml
+resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "500m"
+    memory: "256Mi"
+```
+
+**Service YAML (`k8s/service.yaml`)**:
+
+* For LAN access, use **NodePort**:
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: sre-service
+spec:
+  type: NodePort
+  selector:
+    app: sre
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+```
+
+* NodePort allows access from your host IP (`192.168.0.248`) on a dynamic port (e.g., 32231).
+
+---
+
+## 4. Minikube Deployment
+
+### Build Docker Image inside Minikube:
+
+```bash
+eval $(minikube docker-env)
+docker build -t sre-app:latest1 .
+```
+
+### Apply Kubernetes manifests:
+
+```bash
+kubectl apply -f k8s/deployment.yaml
+kubectl apply -f k8s/service.yaml
+```
+
+### Check Pods and Services:
+
+```bash
+kubectl get pods -w
+kubectl get svc sre-service
+```
+
+### Access the Service from LAN:
+
+```text
+http://192.168.0.248:<NodePort>
+```
+
+Example: `http://192.168.0.248:32231`
+
+---
+
+## 5. Logs & Debugging
+
+* Original logs indicated high response latency and readiness probe failures.
+* Root causes:
+
+  1. `/` endpoint had 3-8s sleep delay.
+  2. `/healthz` returned HTTP 500.
+* Fixes applied in `main.py` resolved the issues.
+
+---
+
+## 6. Incident Report
+
+See `incident-report.md` for:
+
+* Summary
+* Impact
+* Root cause
+* Fixes
+* Preventive measures
+
+---
+
+## 7. Optional Improvements (Bonus)
+
+* Liveness probe added.
+* Resource requests and limits added.
+* Deployment tested locally in Minikube.
+* NodePort exposes service to LAN devices without extra tunneling.
+
+---
+
+## 8. Commands Summary
+
+```bash
+# Set Docker environment for Minikube
+eval $(minikube docker-env)
+
+# Build Docker image
+docker build -t sre-app:latest1 .
+
+# Apply Kubernetes manifests
+kubectl apply -f k8s/deployment.yaml
+kubectl apply -f k8s/service.yaml
+
+# Watch Pods
+kubectl get pods -w
+
+# Access Service from LAN
+kubectl get svc sre-service
+# Note NodePort for access: http://192.168.0.248:<NodePort>
+```
+
+---
+
+## 9. Notes
+
+* Minikube VM IP (`192.168.49.2`) is **not accessible from LAN**. Use NodePort with host IP (`192.168.0.248`) instead.
+* LoadBalancer services in Minikube require `minikube tunnel` for external IP assignment.
+* Application now runs smoothly with reduced latency and proper health checks.
