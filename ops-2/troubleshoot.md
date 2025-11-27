@@ -73,3 +73,24 @@
   kubectl top pods
   kubectl apply -f load-generator.yaml  # stress CPU
   kubectl get hpa advanced-hpa
+
+
+commands:kubectl apply -f deployment.yaml
+kubectl apply -f service.yaml
+kubectl apply -f hpa.yaml
+kubectl apply -f .   # apply all manifests in directory
+kubectl delete -f deployment.yaml
+
+
+kubectl get pods
+kubectl get pods -o wide
+kubectl get pods --show-labels
+kubectl get svc
+kubectl get deployments
+kubectl get endpoints test2-app-service
+
+
+kubectl get hpa
+kubectl get all
+
+
