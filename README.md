@@ -116,11 +116,9 @@ docker build -t advanced-candidate:latest ./app
 # Build sidecar
 docker build -t advanced-sidecar:latest ./sidecar
 
-# Run using docker-compose
-docker-compose up
 Kubernetes (Minikube)
 
 kubectl apply -f k8s/
 minikube service test2-app-service
 kubectl get pods -w
-kubectl describe hpa advanced-hpa
+
